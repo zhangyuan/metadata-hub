@@ -2,8 +2,9 @@ import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "@/App.vue";
 import DatabasesList from "@/components/DatasetList.vue";
-import Dataset from "./components/Dataset.vue";
-import Table from "./components/Table.vue";
+import Dataset from "@/components/Dataset.vue";
+import Table from "@/components/Table.vue";
+import Search from '@/components/Search.vue';
 import { RouteLocation } from 'vue-router';
 import '@/style.css';
 
@@ -30,7 +31,12 @@ const routes = [{
         datasetName: route.params.datasetName,
         tableName: route.params.tableName
       })
-    }
+    },
+    {
+      name: 'search',
+      path: "/search",
+      component: Search
+    },
   ]
 }];
 

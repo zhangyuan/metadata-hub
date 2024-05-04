@@ -1,2 +1,4 @@
 /metadata-hub
 /bin/
+*.swo
+*.swp

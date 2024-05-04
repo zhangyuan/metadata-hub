@@ -2,7 +2,6 @@
 import { httpClient } from "@/http/client";
 import { defineProps, ref, onMounted } from "vue";
 
-
 const tableNames = ref<string[]>([])
 
 const props = defineProps({

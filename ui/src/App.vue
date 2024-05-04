@@ -8,6 +8,7 @@ import { RouterView } from "vue-router";
             <ul class="flex justify-center">
                 <li class="py-3 mx-2"><router-link to="/">Home</router-link></li>
                 <li class="py-3 mx-2"><router-link to="/datasets">Datasets</router-link></li>
+                <li class="py-3 mx-2"><router-link to="/search">Search</router-link></li>
             </ul>
         </div>
         <RouterView />
