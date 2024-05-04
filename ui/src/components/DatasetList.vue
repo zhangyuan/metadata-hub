@@ -12,12 +12,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <h1>databases</h1>
+  <div class="container mx-auto">
+    <div class="breadcrumbs">
+      <router-link to="/"> Home </router-link>
+      &gt;
+      <router-link :to="{name: 'datasets'}"> Datasets </router-link>
+    </div>
 
-    <div>
+    <h1 class="text-4xl my-4">datasets</h1>
+
+    <div class="my-5">
       <ul>
-        <li v-for="datasetName in datasetNames" v-bind:key="datasetName">
+        <li class="bg-amber-200 my-4 p-4 hover:bg-amber-400" v-for="datasetName in datasetNames" v-bind:key="datasetName">
           <router-link :to="{name: 'dataset', params: {datasetName: datasetName}}">{{ datasetName }}</router-link>
         </li>
       </ul>

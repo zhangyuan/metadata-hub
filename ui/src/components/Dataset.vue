@@ -17,18 +17,20 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="container mx-auto">
     <div class="breadcrumbs">
-      <router-link :to="{name: 'datasets'}"> Databases </router-link>
+      <router-link to="/"> Home </router-link>
+      &gt;
+      <router-link :to="{name: 'datasets'}"> Datasets </router-link>
       &gt;
       <span>{{ props.datasetName }}</span>
     </div>
 
-    <h1>Dataset: {{ props.datasetName }}</h1>
+    <h1 class="text-4xl my-4">Dataset: {{ props.datasetName }}</h1>
 
-    <div>
+    <div class="my-5">
       <ul>
-        <li v-for="tableName in tableNames" v-bind:key="tableName">
+        <li class="p-4 my-4 bg-lime-100 hover:bg-lime-400" v-for="tableName in tableNames" v-bind:key="tableName">
           <router-link :to="{name: 'table', params: {tableName: tableName}}">{{ tableName }}</router-link>
         </li>
       </ul>

@@ -30,9 +30,11 @@ onMounted(async() => {
 </script>
 
 <template>
-  <div v-if="table">
+  <div class="container mx-auto" v-if="table">
     <div class="breadcrumbs">
-      <router-link :to="{name: 'datasets'}"> Databases </router-link>
+      <router-link to="/"> Home </router-link>
+      &gt;
+      <router-link :to="{name: 'datasets'}"> Datasets </router-link>
       &gt;
       <router-link :to="{name: 'dataset', params: {datasetName: props.datasetName}}">{{ props.datasetName }}</router-link>
       &gt;
@@ -40,23 +42,23 @@ onMounted(async() => {
     </div>
 
 
-    <h1>Table: {{ table?.name }}</h1>
+    <h1 class="text-4xl my-4">Table: {{ table?.name }}</h1>
 
     <div>
-      <table>
-        <thead>
+      <table class="table-auto border-collapse border border-slate-400 my-5">
+        <thead class="bg-cyan-200">
           <tr>
-            <th>Column</th>
-            <th>Type</th>
-            <th>Comments</th>
+            <th class="p-2 border">Column</th>
+            <th class="p-2 border">Type</th>
+            <th class="p-2 border">Comments</th>
           </tr>
         </thead>
 
         <tbody>
           <tr v-for="column in table.columns" v-bind:key="column.name">
-            <td>{{ column.name }}</td>
-            <td>{{ column.type }}</td>
-            <td>{{ column.comments }}</td>
+            <td class="p-2 border">{{ column.name }}</td>
+            <td class="p-2 border">{{ column.type }}</td>
+            <td class="p-2 border">{{ column.comments }}</td>
           </tr>
         </tbody>
       </table>

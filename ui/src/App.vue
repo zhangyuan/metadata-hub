@@ -3,11 +3,11 @@ import { RouterView } from "vue-router";
 </script>
 
 <template>
-    <div>
-        <div class="navbar">
-            <ul>
-                <li><router-link to="/">Home</router-link></li>
-                <li><router-link to="/datasets">Datasets</router-link></li>
+    <div class="">
+        <div class="container mx-auto py-4">
+            <ul class="flex justify-center">
+                <li class="py-3 mx-2"><router-link to="/">Home</router-link></li>
+                <li class="py-3 mx-2"><router-link to="/datasets">Datasets</router-link></li>
             </ul>
         </div>
         <RouterView />
