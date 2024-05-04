@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { httpClient } from "@/http/client";
-import { ref, onMounted, defineProps } from "vue";
+import { ref, onMounted } from "vue";
 
 
 interface TableColumn {

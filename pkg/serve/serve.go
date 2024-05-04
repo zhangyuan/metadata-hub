@@ -88,7 +88,6 @@ func NewTableDocument(datasetName, tableName string) *TableDocument {
 
 func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
-	// mapping.AddCustomTokenizer(name string, config map[string]interface{})
 	mapping.DefaultAnalyzer = simple.Name
 	index, err := bleve.NewMemOnly(mapping)
 	if err != nil {
