@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { httpClient } from "@/http/client";
-import { defineProps, ref, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 
 const tableNames = ref<string[]>([])
 
