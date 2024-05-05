@@ -15,7 +15,8 @@ jobs:
         with:
           fetch-depth: 1
       - uses: actions/setup-node@v4
-        node-version: '18.x'
+        with:
+          node-version: '18.x'
       - run: npm ci
         working-directory: ui/
       - run: npm run build
