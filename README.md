@@ -32,9 +32,10 @@ The default port is `:8080`.
 
 ## API
 
-| API        | Example                                                |
-| ---------- | ------------------------------------------------------ |
-| 搜索字段   | `/api/search-columns?q=alarm`                          |
-| 搜索表     | `/api/search-tables?q=alarm`                           |
-| 数据集列表 | `/api/datasets?q=alarm`                                |
-| 数据表列表 | `/api/datasets/:datasetName/tables/:tableName?q=alarm` |
+| API        | Example                                        |
+| ---------- | ---------------------------------------------- |
+| 搜索字段   | `/api/search-columns?q=alarm`                  |
+| 搜索表     | `/api/search-tables?q=alarm`                   |
+| 数据集列表 | `/api/datasets`                                |
+| 数据表列表 | `/api/datasets/:datasetName`                   |
+| 数据表详情 | `/api/datasets/:datasetName/tables/:tableName` |

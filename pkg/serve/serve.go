@@ -271,7 +271,7 @@ func Invoke(configDirectory string, addr string) error {
 		}
 
 		query := bleve.NewQueryStringQuery(q)
-		searchRequest := bleve.NewSearchRequestOptions(query, 50, from, false)
+		searchRequest := bleve.NewSearchRequestOptions(query, 100, from, false)
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
 
