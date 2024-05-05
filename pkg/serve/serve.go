@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/simple"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
+
+	"metadata-hub/ui"
 )
 
 type TableColumn struct {
@@ -188,6 +191,10 @@ func BuildIndices(datasets []Dataset) (*Indices, error) {
 	}, nil
 }
 
+func BuildUIAssetPath(path string) string {
+	return fmt.Sprintf("dist%s", path)
+}
+
 func Invoke(configDirectory string, addr string) error {
 	datasets, err := BuildDatasets(configDirectory)
 	if err != nil {
@@ -199,6 +206,47 @@ func Invoke(configDirectory string, addr string) error {
 	}
 
 	r := gin.Default()
+
+	staticFS := ui.StaticFS
+
+	r.Use(func(ctx *gin.Context) {
+		requestPath := ctx.Request.URL.Path
+
+		if strings.HasPrefix(requestPath, "/api/") {
+			ctx.Next()
+			return
+		}
+		if ctx.Request.Method == "GET" {
+			extentions := []string{".css", ".js", ".ico", ".png", ".jpg", ".svg"}
+			for _, extension := range extentions {
+				if strings.HasSuffix(requestPath, extension) {
+					data, err := staticFS.ReadFile(BuildUIAssetPath(requestPath))
+					if err != nil {
+						_ = ctx.AbortWithError(500, err)
+						return
+					} else {
+						ctx.Data(200, mime.TypeByExtension(extension), data)
+						return
+					}
+				}
+			}
+
+			acceptHeader := ctx.Request.Header.Get("Accept")
+			if strings.Contains(acceptHeader, "text/html") || strings.Contains(acceptHeader, "*/*") {
+				file, err := staticFS.ReadFile(BuildUIAssetPath("/index.html"))
+				if err != nil {
+					_ = ctx.AbortWithError(500, err)
+					return
+				}
+				ctx.Data(200, "text/html", file)
+				return
+			}
+
+			return
+		}
+		ctx.AbortWithStatus(404)
+	})
+
 	r.GET("/api/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
