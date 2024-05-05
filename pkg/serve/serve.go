@@ -323,6 +323,14 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
 
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"data":    []string{},
+				"message": err.Error(),
+			})
+			return
+		}
+
 		for _, hit := range searchResult.Hits {
 			columnId := hit.ID
 			columnIdSplit := strings.Split(columnId, ".")
@@ -330,14 +338,6 @@ func Invoke(configDirectory string, addr string) error {
 			tableName := columnIdSplit[1]
 			hit.Fields["datasetName"] = datasetName
 			hit.Fields["tableName"] = tableName
-		}
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"data":    []string{},
-				"message": err.Error(),
-			})
-			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -365,19 +365,19 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
 
-		for _, hit := range searchResult.Hits {
-			tableId := hit.ID
-			columnIdSplit := strings.Split(tableId, ".")
-			datasetName := columnIdSplit[0]
-			hit.Fields["datasetName"] = datasetName
-		}
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},
 				"message": err.Error(),
 			})
 			return
+		}
+
+		for _, hit := range searchResult.Hits {
+			tableId := hit.ID
+			columnIdSplit := strings.Split(tableId, ".")
+			datasetName := columnIdSplit[0]
+			hit.Fields["datasetName"] = datasetName
 		}
 
 		c.JSON(http.StatusOK, gin.H{
