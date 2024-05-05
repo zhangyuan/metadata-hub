@@ -45,7 +45,7 @@ onMounted(async() => {
     <h1 class="text-4xl my-4">Table: {{ table?.name }}</h1>
 
     <div>
-      <table class="table-auto border-collapse border border-slate-400 my-5">
+      <table class="table-auto w-full border-collapse border border-slate-400 my-5">
         <thead class="bg-cyan-200">
           <tr>
             <th class="p-2 border">Column</th>
@@ -55,7 +55,7 @@ onMounted(async() => {
         </thead>
 
         <tbody>
-          <tr v-for="column in table.columns" v-bind:key="column.name">
+          <tr class="hover:bg-rose-100" v-for="column in table.columns" v-bind:key="column.name">
             <td class="p-2 border">{{ column.name }}</td>
             <td class="p-2 border">{{ column.type }}</td>
             <td class="p-2 border">{{ column.comments }}</td>

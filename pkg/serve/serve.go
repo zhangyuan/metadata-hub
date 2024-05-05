@@ -17,17 +17,21 @@ import (
 )
 
 type TableColumn struct {
+	Id       string
 	Name     string `yaml:"name" json:"name"`
 	Comments string `yaml:"comments" json:"comments"`
 	Type     string `yaml:"type" json:"type"`
 }
 
 type Table struct {
-	Name    string        `yaml:"name" json:"name"`
-	Columns []TableColumn `yaml:"columns" json:"columns"`
+	Id       string
+	Name     string        `yaml:"name" json:"name"`
+	Comments string        `yaml:"comments" json:"comments"`
+	Columns  []TableColumn `yaml:"columns" json:"columns"`
 }
 
 type Dataset struct {
+	Id     string
 	Name   string
 	Tables []Table
 }
@@ -50,39 +54,30 @@ func Parse[T interface{}](source []byte) ([]T, error) {
 }
 
 type DatasetDocument struct {
-	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
 type ColumnDocument struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Comments    string `json:"comments"`
-	DatasetName string `json:"dataset_name"`
-	TableName   string `json:"table_name"`
+	Name     string `json:"name"`
+	Comments string `json:"comments"`
 }
 
-func NewColumnDocument(databaseName, tableName, columnName, columnComments string) *ColumnDocument {
+func NewColumnDocument(column *TableColumn) *ColumnDocument {
 	return &ColumnDocument{
-		Id:          fmt.Sprintf("%s.%s.%s", databaseName, tableName, columnName),
-		DatasetName: databaseName,
-		TableName:   tableName,
-		Name:        columnName,
-		Comments:    columnComments,
+		Name:     column.Name,
+		Comments: column.Comments,
 	}
 }
 
 type TableDocument struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	DatasetName string `json:"dataset_name"`
+	Name     string `json:"name"`
+	Comments string `json:"comments"`
 }
 
-func NewTableDocument(datasetName, tableName string) *TableDocument {
+func NewTableDocument(table *Table) *TableDocument {
 	return &TableDocument{
-		Id:          fmt.Sprintf("%s.%s", datasetName, tableName),
-		DatasetName: datasetName,
-		Name:        tableName,
+		Name:     table.Name,
+		Comments: table.Comments,
 	}
 }
 
@@ -97,14 +92,9 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
-				document := NewColumnDocument(
-					dataset.Name,
-					table.Name,
-					column.Name,
-					column.Comments,
-				)
+				document := NewColumnDocument(&column)
 
-				if err := index.Index(document.Id, document); err != nil {
+				if err := index.Index(column.Id, document); err != nil {
 					return nil, err
 				}
 			}
@@ -123,33 +113,8 @@ func IndexTables(datasets []Dataset) (bleve.Index, error) {
 
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
-			document := NewTableDocument(
-				dataset.Name,
-				table.Name,
-			)
-			if err := index.Index(document.Id, document); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return index, nil
-}
-
-func IndexDataset(datasets []Dataset) (bleve.Index, error) {
-	mapping := bleve.NewIndexMapping()
-	index, err := bleve.NewMemOnly(mapping)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, dataset := range datasets {
-		for _, table := range dataset.Tables {
-			document := NewTableDocument(
-				dataset.Name,
-				table.Name,
-			)
-			if err := index.Index(document.Id, document); err != nil {
+			document := NewTableDocument(&table)
+			if err := index.Index(table.Id, document); err != nil {
 				return nil, err
 			}
 		}
@@ -159,7 +124,6 @@ func IndexDataset(datasets []Dataset) (bleve.Index, error) {
 }
 
 type Indices struct {
-	DatasetIndex bleve.Index
 	TablesIndex  bleve.Index
 	ColumnsIndex bleve.Index
 }
@@ -186,8 +150,20 @@ func BuildDatasets(configDirectory string) ([]Dataset, error) {
 				return nil, err
 			}
 
+			datasetName := strings.TrimRight(file.Name(), ".yaml")
+			for tableIdx := range tables {
+				table := &tables[tableIdx]
+				table.Id = fmt.Sprintf("%s.%s", datasetName, table.Name)
+
+				for columnIdx := range table.Columns {
+					column := &table.Columns[columnIdx]
+					column.Id = fmt.Sprintf("%s.%s", table.Id, column.Name)
+				}
+			}
+
 			datasets = append(datasets, Dataset{
-				Name:   strings.TrimRight(file.Name(), ".yaml"),
+				Id:     datasetName,
+				Name:   datasetName,
 				Tables: tables,
 			})
 		}
@@ -298,6 +274,16 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest := bleve.NewSearchRequestOptions(query, 50, from, false)
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
+
+		for _, hit := range searchResult.Hits {
+			columnId := hit.ID
+			columnIdSplit := strings.Split(columnId, ".")
+			datasetName := columnIdSplit[0]
+			tableName := columnIdSplit[1]
+			hit.Fields["datasetName"] = datasetName
+			hit.Fields["tableName"] = tableName
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},
@@ -327,9 +313,17 @@ func Invoke(configDirectory string, addr string) error {
 		}
 
 		query := bleve.NewQueryStringQuery(q)
-		searchRequest := bleve.NewSearchRequestOptions(query, 50, from, false)
+		searchRequest := bleve.NewSearchRequestOptions(query, 100, from, false)
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
+
+		for _, hit := range searchResult.Hits {
+			tableId := hit.ID
+			columnIdSplit := strings.Split(tableId, ".")
+			datasetName := columnIdSplit[0]
+			hit.Fields["datasetName"] = datasetName
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},

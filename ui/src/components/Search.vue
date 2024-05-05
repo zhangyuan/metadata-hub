@@ -6,11 +6,10 @@ import { useRouter } from 'vue-router';
 import { useRoute } from 'vue-router';
 
 interface ColumnHitFields {
-  id: string
   name: string
   comments: string,
-  dataset_name: string,
-  table_name: string
+  datasetName: string,
+  tableName: string
 }
 
 interface ColumnHit {
@@ -28,9 +27,8 @@ interface SearchColumnsResponse {
 }
 
 interface TableHitFields {
-  id: string
   name: string
-  dataset_name: string
+  datasetName: string
 }
 
 interface TableHit {
@@ -97,11 +95,40 @@ watch(userInput, (value: string) => {
       <input class="border p-4 w-3/6" type="text" v-model="userInput" @input="onSearch">
     </div>
 
-    <div class="flex grid-cols-2 gap-4">
-      <div class="w-1/2" v-if="searchColumnsResponse">
+    <div class="">
+      <div class="" v-if="searchTablesResponse">
+        <h2 class="text-center"> Tables ({{ searchTablesResponse?.data.total_hits }}) </h2>
+
+        <table class="table-auto w-full border-collapse border border-slate-400 my-5"
+          v-if="searchTablesResponse?.data.hits.length > 0">
+          <thead class="bg-cyan-200">
+            <tr>
+              <th class="p-2 border">Dataset</th>
+              <th class="p-2 border">Table</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr class="hover:bg-lime-100" v-for="hit in searchTablesResponse?.data.hits" v-bind:key="hit.id">
+              <td class="p-2 border">
+                <router-link :to="{ name: 'dataset', params: { datasetName: hit.fields.datasetName } }">{{
+                  hit.fields.datasetName }}</router-link>
+              </td>
+              <td class="p-2 border">
+                <router-link
+                  :to="{ name: 'table', params: { datasetName: hit.fields.datasetName, tableName: hit.fields.name } }">{{
+                    hit.fields.name }}</router-link>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-center" v-if="searchColumnsResponse">
         <h2> Columns ({{ searchColumnsResponse?.data.total_hits }}) </h2>
 
-        <table class="table-auto border-collapse border border-slate-400 my-5" v-if="searchColumnsResponse?.data.hits.length > 0">
+        <table class="table-auto w-full border-collapse border border-slate-400 my-5"
+          v-if="searchColumnsResponse?.data.hits.length > 0">
           <thead class="bg-cyan-200">
             <tr>
               <th class="p-2 border">Dataset</th>
@@ -112,12 +139,15 @@ watch(userInput, (value: string) => {
           </thead>
 
           <tbody>
-            <tr v-for="hit in searchColumnsResponse?.data.hits" v-bind:key="hit.id">
+            <tr class="hover:bg-lime-100" v-for="hit in searchColumnsResponse?.data.hits" v-bind:key="hit.id">
               <td class="p-2 border">
-                <router-link :to="{name: 'dataset', params: {datasetName: hit.fields.dataset_name}}">{{ hit.fields.dataset_name }}</router-link>
+                <router-link :to="{ name: 'dataset', params: { datasetName: hit.fields.datasetName } }">{{
+                  hit.fields.datasetName }}</router-link>
               </td>
               <td class="p-2 border">
-                <router-link :to="{name: 'table', params: {datasetName: hit.fields.dataset_name, tableName: hit.fields.table_name}}">{{ hit.fields.table_name }}</router-link>
+                <router-link
+                  :to="{ name: 'table', params: { datasetName: hit.fields.datasetName, tableName: hit.fields.tableName } }">{{
+                    hit.fields.tableName }}</router-link>
               </td>
               <td class="p-2 border">{{ hit.fields.name }}</td>
               <td class="p-2 border">{{ hit.fields.comments }}</td>
@@ -125,30 +155,6 @@ watch(userInput, (value: string) => {
           </tbody>
         </table>
 
-      </div>
-
-      <div class="w-1/2" v-if="searchTablesResponse">
-        <h2> Tables ({{ searchTablesResponse?.data.total_hits }}) </h2>
-
-        <table class="table-auto border-collapse border border-slate-400 my-5" v-if="searchTablesResponse?.data.hits.length > 0">
-          <thead class="bg-cyan-200">
-            <tr>
-              <th class="p-2 border">Dataset</th>
-              <th class="p-2 border">Table</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr v-for="hit in searchTablesResponse?.data.hits" v-bind:key="hit.id">
-              <td class="p-2 border">
-                <router-link :to="{name: 'dataset', params: {datasetName: hit.fields.dataset_name}}">{{ hit.fields.dataset_name }}</router-link>
-              </td>
-              <td class="p-2 border">
-                <router-link :to="{name: 'table', params: {datasetName: hit.fields.dataset_name, tableName: hit.fields.name}}">{{ hit.fields.name }}</router-link>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </div>

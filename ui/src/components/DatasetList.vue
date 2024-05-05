@@ -19,7 +19,7 @@ onMounted(async () => {
       <router-link :to="{name: 'datasets'}"> Datasets </router-link>
     </div>
 
-    <h1 class="text-4xl my-4">datasets</h1>
+    <h1 class="text-4xl my-4">Datasets</h1>
 
     <div class="my-5">
       <ul>
