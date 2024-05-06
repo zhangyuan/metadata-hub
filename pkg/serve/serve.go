@@ -131,6 +131,8 @@ type Indices struct {
 	ColumnsIndex bleve.Index
 }
 
+const sep = "/"
+
 func BuildDatasets(configDirectory string) ([]Dataset, error) {
 	files, err := os.ReadDir(configDirectory)
 	if err != nil {
@@ -156,11 +158,11 @@ func BuildDatasets(configDirectory string) ([]Dataset, error) {
 			datasetName := strings.TrimRight(file.Name(), ".yaml")
 			for tableIdx := range tables {
 				table := &tables[tableIdx]
-				table.Id = fmt.Sprintf("%s.%s", datasetName, table.Name)
+				table.Id = strings.Join([]string{datasetName, table.Name}, sep)
 
 				for columnIdx := range table.Columns {
 					column := &table.Columns[columnIdx]
-					column.Id = fmt.Sprintf("%s.%s", table.Id, column.Name)
+					column.Id = strings.Join([]string{table.Id, column.Name}, sep)
 				}
 			}
 
@@ -333,7 +335,7 @@ func Invoke(configDirectory string, addr string) error {
 
 		for _, hit := range searchResult.Hits {
 			columnId := hit.ID
-			columnIdSplit := strings.Split(columnId, ".")
+			columnIdSplit := strings.Split(columnId, sep)
 			datasetName := columnIdSplit[0]
 			tableName := columnIdSplit[1]
 			hit.Fields["datasetName"] = datasetName
@@ -375,7 +377,7 @@ func Invoke(configDirectory string, addr string) error {
 
 		for _, hit := range searchResult.Hits {
 			tableId := hit.ID
-			columnIdSplit := strings.Split(tableId, ".")
+			columnIdSplit := strings.Split(tableId, sep)
 			datasetName := columnIdSplit[0]
 			hit.Fields["datasetName"] = datasetName
 		}
