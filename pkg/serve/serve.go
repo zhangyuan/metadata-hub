@@ -12,6 +12,11 @@ import (
 	"strings"
 
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
+	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
+	"github.com/blevesearch/bleve/v2/analysis/token/ngram"
+	"github.com/blevesearch/bleve/v2/analysis/tokenizer/letter"
+	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 
@@ -60,31 +65,58 @@ type DatasetDocument struct {
 }
 
 type ColumnDocument struct {
-	Name     string `json:"name"`
-	Comments string `json:"comments"`
+	Name        string `json:"name"`
+	Comments    string `json:"comments"`
+	DatasetName string `json:"datasetName"`
+	TableName   string `json:"tableName"`
 }
 
-func NewColumnDocument(column *TableColumn) *ColumnDocument {
+func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *ColumnDocument {
 	return &ColumnDocument{
-		Name:     column.Name,
-		Comments: column.Comments,
+		Name:        column.Name,
+		Comments:    column.Comments,
+		DatasetName: dataset.Name,
+		TableName:   table.Name,
 	}
 }
 
 type TableDocument struct {
-	Name     string `json:"name"`
-	Comments string `json:"comments"`
+	Name        string `json:"name"`
+	Comments    string `json:"comments"`
+	DatasetName string `json:"datasetName"`
 }
 
-func NewTableDocument(table *Table) *TableDocument {
+func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
 	return &TableDocument{
-		Name:     table.Name,
-		Comments: table.Comments,
+		Name:        table.Name,
+		Comments:    table.Comments,
+		DatasetName: dataset.Name,
 	}
 }
 
 func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
+	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
+		"type": ngram.Name,
+		"min":  2,
+		"max":  2,
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := mapping.AddCustomAnalyzer("custom", map[string]interface{}{
+		"type":      custom.Name,
+		"tokenizer": letter.Name,
+		"token_filters": []string{
+			lowercase.Name,
+			"content_ngram",
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	mapping.DefaultAnalyzer = "custom"
+
 	index, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		return nil, err
@@ -93,9 +125,7 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
-				document := NewColumnDocument(&column)
-
-				fmt.Println(document.Comments)
+				document := NewColumnDocument(&dataset, &table, &column)
 				if err := index.Index(column.Id, document); err != nil {
 					return nil, err
 				}
@@ -108,6 +138,28 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 
 func IndexTables(datasets []Dataset) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
+
+	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
+		"type": ngram.Name,
+		"min":  2,
+		"max":  2,
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := mapping.AddCustomAnalyzer("custom", map[string]interface{}{
+		"type":      custom.Name,
+		"tokenizer": letter.Name,
+		"token_filters": []string{
+			lowercase.Name,
+			"content_ngram",
+		},
+	}); err != nil {
+		return nil, err
+	}
+
+	mapping.DefaultAnalyzer = "custom"
+
 	index, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		return nil, err
@@ -115,7 +167,7 @@ func IndexTables(datasets []Dataset) (bleve.Index, error) {
 
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
-			document := NewTableDocument(&table)
+			document := NewTableDocument(&dataset, &table)
 			if err := index.Index(table.Id, document); err != nil {
 				return nil, err
 			}
@@ -319,8 +371,19 @@ func Invoke(configDirectory string, addr string) error {
 			return
 		}
 
-		query := bleve.NewQueryStringQuery(q)
-		searchRequest := bleve.NewSearchRequestOptions(query, 100, from, false)
+		nameMatchQuery := bleve.NewMatchQuery(q)
+		nameMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
+		nameMatchQuery.SetField("name")
+		// nameMatchQuery.SetFuzziness(1)
+
+		commentsMatchQuery := bleve.NewMatchQuery(q)
+		commentsMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
+		commentsMatchQuery.SetField("comments")
+		// commentsMatchQuery.SetFuzziness(2)
+
+		disjunctionQuery := bleve.NewDisjunctionQuery(nameMatchQuery, commentsMatchQuery)
+		searchRequest := bleve.NewSearchRequestOptions(disjunctionQuery, 100, from, false)
+
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
 
@@ -330,15 +393,6 @@ func Invoke(configDirectory string, addr string) error {
 				"message": err.Error(),
 			})
 			return
-		}
-
-		for _, hit := range searchResult.Hits {
-			columnId := hit.ID
-			columnIdSplit := strings.Split(columnId, sep)
-			datasetName := columnIdSplit[0]
-			tableName := columnIdSplit[1]
-			hit.Fields["datasetName"] = datasetName
-			hit.Fields["tableName"] = tableName
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -361,8 +415,17 @@ func Invoke(configDirectory string, addr string) error {
 			return
 		}
 
-		query := bleve.NewQueryStringQuery(q)
-		searchRequest := bleve.NewSearchRequestOptions(query, 100, from, false)
+		nameQuery := bleve.NewMatchQuery(q)
+		nameQuery.SetField("name")
+		nameQuery.SetOperator(query.MatchQueryOperatorAnd)
+
+		commentsQuery := bleve.NewMatchQuery(q)
+		commentsQuery.SetField("comments")
+		commentsQuery.SetOperator(query.MatchQueryOperatorAnd)
+
+		disjunctionQuery := bleve.NewDisjunctionQuery(nameQuery, commentsQuery)
+		searchRequest := bleve.NewSearchRequestOptions(disjunctionQuery, 100, from, false)
+
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
 
@@ -372,13 +435,6 @@ func Invoke(configDirectory string, addr string) error {
 				"message": err.Error(),
 			})
 			return
-		}
-
-		for _, hit := range searchResult.Hits {
-			tableId := hit.ID
-			columnIdSplit := strings.Split(tableId, sep)
-			datasetName := columnIdSplit[0]
-			hit.Fields["datasetName"] = datasetName
 		}
 
 		c.JSON(http.StatusOK, gin.H{
