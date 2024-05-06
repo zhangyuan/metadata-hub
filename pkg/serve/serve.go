@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/analysis/analyzer/simple"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 
@@ -86,7 +85,6 @@ func NewTableDocument(table *Table) *TableDocument {
 
 func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
-	mapping.DefaultAnalyzer = simple.Name
 	index, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		return nil, err
@@ -97,6 +95,7 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 			for _, column := range table.Columns {
 				document := NewColumnDocument(&column)
 
+				fmt.Println(document.Comments)
 				if err := index.Index(column.Id, document); err != nil {
 					return nil, err
 				}
