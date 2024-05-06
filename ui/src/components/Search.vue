@@ -96,20 +96,22 @@ watch(userInput, (value: string) => {
     </div>
 
     <div class="">
-      <div class="" v-if="searchTablesResponse">
-        <h2 class="text-center"> Tables ({{ searchTablesResponse?.data.total_hits }}) </h2>
+      <div class="text-center" v-if="searchTablesResponse">
+        <h2> Tables ({{ searchTablesResponse?.data.total_hits }}) </h2>
 
         <table class="table-auto w-full border-collapse border border-slate-400 my-5"
           v-if="searchTablesResponse?.data.hits.length > 0">
           <thead class="bg-cyan-200">
             <tr>
+              <th class="p-2 border">#</th>
               <th class="p-2 border">Dataset</th>
               <th class="p-2 border">Table</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr class="hover:bg-lime-100" v-for="hit in searchTablesResponse?.data.hits" v-bind:key="hit.id">
+            <tr class="hover:bg-lime-100" v-for="(hit, idx) in searchTablesResponse?.data.hits" v-bind:key="hit.id">
+              <td class="p-2 border">{{ idx + 1 }}</td>
               <td class="p-2 border">
                 <router-link :to="{ name: 'dataset', params: { datasetName: hit.fields.datasetName } }">{{
                   hit.fields.datasetName }}</router-link>
@@ -131,6 +133,7 @@ watch(userInput, (value: string) => {
           v-if="searchColumnsResponse?.data.hits.length > 0">
           <thead class="bg-cyan-200">
             <tr>
+              <th class="p-2 border">#</th>
               <th class="p-2 border">Dataset</th>
               <th class="p-2 border">Table</th>
               <th class="p-2 border">Column</th>
@@ -139,7 +142,8 @@ watch(userInput, (value: string) => {
           </thead>
 
           <tbody>
-            <tr class="hover:bg-lime-100" v-for="hit in searchColumnsResponse?.data.hits" v-bind:key="hit.id">
+            <tr class="hover:bg-lime-100" v-for="(hit, idx) in searchColumnsResponse?.data.hits" v-bind:key="hit.id">
+              <td class="p-2 border">{{ idx + 1 }}</td>
               <td class="p-2 border">
                 <router-link :to="{ name: 'dataset', params: { datasetName: hit.fields.datasetName } }">{{
                   hit.fields.datasetName }}</router-link>
