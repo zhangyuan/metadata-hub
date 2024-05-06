@@ -60,15 +60,12 @@ func Parse[T interface{}](source []byte) ([]T, error) {
 	}
 }
 
-type DatasetDocument struct {
-	Name string `json:"name"`
-}
-
 type ColumnDocument struct {
 	Name        string `json:"name"`
 	Comments    string `json:"comments"`
 	DatasetName string `json:"datasetName"`
 	TableName   string `json:"tableName"`
+	Document    string `json:"document"`
 }
 
 func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *ColumnDocument {
@@ -77,6 +74,7 @@ func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *Col
 		Comments:    column.Comments,
 		DatasetName: dataset.Name,
 		TableName:   table.Name,
+		Document:    strings.Join([]string{column.Name, column.Comments}, "\n"),
 	}
 }
 
@@ -84,6 +82,7 @@ type TableDocument struct {
 	Name        string `json:"name"`
 	Comments    string `json:"comments"`
 	DatasetName string `json:"datasetName"`
+	Document    string `json:"document"`
 }
 
 func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
@@ -91,6 +90,7 @@ func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
 		Name:        table.Name,
 		Comments:    table.Comments,
 		DatasetName: dataset.Name,
+		Document:    strings.Join([]string{table.Name, table.Comments}, "\n"),
 	}
 }
 
@@ -98,7 +98,7 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	mapping := bleve.NewIndexMapping()
 	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
 		"type": ngram.Name,
-		"min":  2,
+		"min":  1,
 		"max":  2,
 	}); err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func IndexTables(datasets []Dataset) (bleve.Index, error) {
 
 	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
 		"type": ngram.Name,
-		"min":  2,
+		"min":  1,
 		"max":  2,
 	}); err != nil {
 		return nil, err
@@ -371,18 +371,11 @@ func Invoke(configDirectory string, addr string) error {
 			return
 		}
 
-		nameMatchQuery := bleve.NewMatchQuery(q)
-		nameMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
-		nameMatchQuery.SetField("name")
-		// nameMatchQuery.SetFuzziness(1)
+		documentMatchQuery := bleve.NewMatchQuery(q)
+		documentMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
+		documentMatchQuery.SetField("document")
 
-		commentsMatchQuery := bleve.NewMatchQuery(q)
-		commentsMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
-		commentsMatchQuery.SetField("comments")
-		// commentsMatchQuery.SetFuzziness(2)
-
-		disjunctionQuery := bleve.NewDisjunctionQuery(nameMatchQuery, commentsMatchQuery)
-		searchRequest := bleve.NewSearchRequestOptions(disjunctionQuery, 100, from, false)
+		searchRequest := bleve.NewSearchRequestOptions(documentMatchQuery, 100, from, false)
 
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
@@ -415,16 +408,11 @@ func Invoke(configDirectory string, addr string) error {
 			return
 		}
 
-		nameQuery := bleve.NewMatchQuery(q)
-		nameQuery.SetField("name")
-		nameQuery.SetOperator(query.MatchQueryOperatorAnd)
+		documentMatchQuery := bleve.NewMatchQuery(q)
+		documentMatchQuery.SetOperator(query.MatchQueryOperatorAnd)
+		documentMatchQuery.SetField("document")
 
-		commentsQuery := bleve.NewMatchQuery(q)
-		commentsQuery.SetField("comments")
-		commentsQuery.SetOperator(query.MatchQueryOperatorAnd)
-
-		disjunctionQuery := bleve.NewDisjunctionQuery(nameQuery, commentsQuery)
-		searchRequest := bleve.NewSearchRequestOptions(disjunctionQuery, 100, from, false)
+		searchRequest := bleve.NewSearchRequestOptions(documentMatchQuery, 100, from, false)
 
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
