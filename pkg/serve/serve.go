@@ -70,11 +70,7 @@ type ColumnDocument struct {
 
 func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *ColumnDocument {
 	return &ColumnDocument{
-		Name:        column.Name,
-		Comments:    column.Comments,
-		DatasetName: dataset.Name,
-		TableName:   table.Name,
-		Document:    strings.Join([]string{column.Name, column.Comments}, "\n"),
+		Document: strings.Join([]string{column.Name, column.Comments}, "\n"),
 	}
 }
 
@@ -87,10 +83,7 @@ type TableDocument struct {
 
 func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
 	return &TableDocument{
-		Name:        table.Name,
-		Comments:    table.Comments,
-		DatasetName: dataset.Name,
-		Document:    strings.Join([]string{table.Name, table.Comments}, "\n"),
+		Document: strings.Join([]string{table.Name, table.Comments}, "\n"),
 	}
 }
 
@@ -182,6 +175,29 @@ type Indices struct {
 	ColumnsIndex bleve.Index
 }
 
+type TableColumnRecord struct {
+	Id          string
+	Name        string
+	DatasetName string
+	TableName   string
+	Comments    string
+}
+
+type TableRecord struct {
+	Id          string
+	Name        string
+	Comments    string
+	DatasetName string
+}
+
+type ColumnStore map[string]TableColumnRecord
+type TableStore map[string]TableRecord
+
+type Store struct {
+	ColumnStore ColumnStore
+	TableStore  TableStore
+}
+
 const sep = "/"
 
 func BuildDatasets(configDirectory string) ([]Dataset, error) {
@@ -228,6 +244,40 @@ func BuildDatasets(configDirectory string) ([]Dataset, error) {
 	return datasets, nil
 }
 
+func BuildStore(datasets []Dataset) *Store {
+	columnStore := ColumnStore{}
+	for _, dataset := range datasets {
+		for _, table := range dataset.Tables {
+			for _, column := range table.Columns {
+				columnStore[column.Id] = TableColumnRecord{
+					Id:          column.Id,
+					Name:        column.Name,
+					Comments:    column.Comments,
+					DatasetName: dataset.Name,
+					TableName:   table.Name,
+				}
+			}
+		}
+	}
+
+	tableStore := TableStore{}
+	for _, dataset := range datasets {
+		for _, table := range dataset.Tables {
+			tableStore[table.Id] = TableRecord{
+				Id:          table.Id,
+				Name:        table.Name,
+				Comments:    table.Comments,
+				DatasetName: dataset.Name,
+			}
+		}
+	}
+
+	return &Store{
+		TableStore:  tableStore,
+		ColumnStore: columnStore,
+	}
+}
+
 func BuildIndices(datasets []Dataset) (*Indices, error) {
 	columnsIndex, err := IndexColumns(datasets)
 	if err != nil {
@@ -257,6 +307,8 @@ func Invoke(configDirectory string, addr string) error {
 	if err != nil {
 		return err
 	}
+
+	store := BuildStore(datasets)
 
 	r := gin.Default()
 
@@ -380,6 +432,15 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
 
+		for hitIdx := range searchResult.Hits {
+			hit := searchResult.Hits[hitIdx]
+			columnRecord := store.ColumnStore[hit.ID]
+			searchResult.Hits[hitIdx].Fields["datasetName"] = columnRecord.DatasetName
+			searchResult.Hits[hitIdx].Fields["tableName"] = columnRecord.DatasetName
+			searchResult.Hits[hitIdx].Fields["name"] = columnRecord.Name
+			searchResult.Hits[hitIdx].Fields["comments"] = columnRecord.Comments
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},
@@ -416,6 +477,14 @@ func Invoke(configDirectory string, addr string) error {
 
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
+
+		for hitIdx := range searchResult.Hits {
+			hit := searchResult.Hits[hitIdx]
+			tableRecord := store.TableStore[hit.ID]
+			hit.Fields["datasetName"] = tableRecord.DatasetName
+			hit.Fields["name"] = tableRecord.Name
+			hit.Fields["comments"] = tableRecord.Comments
+		}
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
