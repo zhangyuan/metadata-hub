@@ -61,11 +61,7 @@ func Parse[T interface{}](source []byte) ([]T, error) {
 }
 
 type ColumnDocument struct {
-	Name        string `json:"name"`
-	Comments    string `json:"comments"`
-	DatasetName string `json:"datasetName"`
-	TableName   string `json:"tableName"`
-	Document    string `json:"document"`
+	Document string `json:"document"`
 }
 
 func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *ColumnDocument {
@@ -75,10 +71,7 @@ func NewColumnDocument(dataset *Dataset, table *Table, column *TableColumn) *Col
 }
 
 type TableDocument struct {
-	Name        string `json:"name"`
-	Comments    string `json:"comments"`
-	DatasetName string `json:"datasetName"`
-	Document    string `json:"document"`
+	Document string `json:"document"`
 }
 
 func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
@@ -176,18 +169,18 @@ type Indices struct {
 }
 
 type TableColumnRecord struct {
-	Id          string
-	Name        string
-	DatasetName string
-	TableName   string
-	Comments    string
+	Id          *string
+	Name        *string
+	DatasetName *string
+	TableName   *string
+	Comments    *string
 }
 
 type TableRecord struct {
-	Id          string
-	Name        string
-	Comments    string
-	DatasetName string
+	Id          *string
+	Name        *string
+	Comments    *string
+	DatasetName *string
 }
 
 type ColumnStore map[string]TableColumnRecord
@@ -250,11 +243,11 @@ func BuildStore(datasets []Dataset) *Store {
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
 				columnStore[column.Id] = TableColumnRecord{
-					Id:          column.Id,
-					Name:        column.Name,
-					Comments:    column.Comments,
-					DatasetName: dataset.Name,
-					TableName:   table.Name,
+					Id:          &column.Id,
+					Name:        &column.Name,
+					Comments:    &column.Comments,
+					DatasetName: &dataset.Name,
+					TableName:   &table.Name,
 				}
 			}
 		}
@@ -264,10 +257,10 @@ func BuildStore(datasets []Dataset) *Store {
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
 			tableStore[table.Id] = TableRecord{
-				Id:          table.Id,
-				Name:        table.Name,
-				Comments:    table.Comments,
-				DatasetName: dataset.Name,
+				Id:          &table.Id,
+				Name:        &table.Name,
+				Comments:    &table.Comments,
+				DatasetName: &dataset.Name,
 			}
 		}
 	}
