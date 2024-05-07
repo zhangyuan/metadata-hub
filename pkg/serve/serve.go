@@ -303,6 +303,12 @@ func Invoke(configDirectory string, addr string) error {
 
 	store := BuildStore(datasets)
 
+	if strings.ToLower(os.Getenv("GIN_MODE")) == "debug" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 
 	staticFS := ui.StaticFS
