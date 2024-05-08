@@ -85,7 +85,7 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
 		"type": ngram.Name,
 		"min":  1,
-		"max":  2,
+		"max":  3,
 	}); err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func IndexTables(datasets []Dataset) (bleve.Index, error) {
 	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
 		"type": ngram.Name,
 		"min":  1,
-		"max":  2,
+		"max":  3,
 	}); err != nil {
 		return nil, err
 	}
@@ -169,18 +169,18 @@ type Indices struct {
 }
 
 type TableColumnRecord struct {
-	Id          *string
-	Name        *string
-	DatasetName *string
-	TableName   *string
-	Comments    *string
+	Id          string
+	Name        string
+	Comments    string
+	DatasetName string
+	TableName   string
 }
 
 type TableRecord struct {
-	Id          *string
-	Name        *string
-	Comments    *string
-	DatasetName *string
+	Id          string
+	Name        string
+	Comments    string
+	DatasetName string
 }
 
 type ColumnStore map[string]TableColumnRecord
@@ -222,7 +222,7 @@ func BuildDatasets(configDirectory string) ([]Dataset, error) {
 
 				for columnIdx := range table.Columns {
 					column := &table.Columns[columnIdx]
-					column.Id = strings.Join([]string{table.Id, column.Name}, sep)
+					column.Id = strings.Join([]string{datasetName, table.Id, column.Name}, sep)
 				}
 			}
 
@@ -243,11 +243,11 @@ func BuildStore(datasets []Dataset) *Store {
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
 				columnStore[column.Id] = TableColumnRecord{
-					Id:          &column.Id,
-					Name:        &column.Name,
-					Comments:    &column.Comments,
-					DatasetName: &dataset.Name,
-					TableName:   &table.Name,
+					Id:          column.Id,
+					Name:        column.Name,
+					Comments:    column.Comments,
+					DatasetName: dataset.Name,
+					TableName:   table.Name,
 				}
 			}
 		}
@@ -257,10 +257,10 @@ func BuildStore(datasets []Dataset) *Store {
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
 			tableStore[table.Id] = TableRecord{
-				Id:          &table.Id,
-				Name:        &table.Name,
-				Comments:    &table.Comments,
-				DatasetName: &dataset.Name,
+				Id:          table.Id,
+				Name:        table.Name,
+				Comments:    table.Comments,
+				DatasetName: dataset.Name,
 			}
 		}
 	}
@@ -431,21 +431,23 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.ColumnsIndex.Search(searchRequest)
 
-		for hitIdx := range searchResult.Hits {
-			hit := searchResult.Hits[hitIdx]
-			columnRecord := store.ColumnStore[hit.ID]
-			searchResult.Hits[hitIdx].Fields["datasetName"] = columnRecord.DatasetName
-			searchResult.Hits[hitIdx].Fields["tableName"] = columnRecord.DatasetName
-			searchResult.Hits[hitIdx].Fields["name"] = columnRecord.Name
-			searchResult.Hits[hitIdx].Fields["comments"] = columnRecord.Comments
-		}
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},
 				"message": err.Error(),
 			})
 			return
+		}
+
+		for hitIdx := range searchResult.Hits {
+			hit := searchResult.Hits[hitIdx]
+			columnRecord := store.ColumnStore[hit.ID]
+			searchResult.Hits[hitIdx].Fields["datasetName"] = columnRecord.DatasetName
+			searchResult.Hits[hitIdx].Fields["tableName"] = columnRecord.TableName
+			searchResult.Hits[hitIdx].Fields["name"] = columnRecord.Name
+			searchResult.Hits[hitIdx].Fields["comments"] = columnRecord.Comments
+
+			fmt.Println(hit.ID, columnRecord.Id)
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -477,20 +479,20 @@ func Invoke(configDirectory string, addr string) error {
 		searchRequest.Fields = []string{"*"}
 		searchResult, err := indices.TablesIndex.Search(searchRequest)
 
-		for hitIdx := range searchResult.Hits {
-			hit := searchResult.Hits[hitIdx]
-			tableRecord := store.TableStore[hit.ID]
-			hit.Fields["datasetName"] = tableRecord.DatasetName
-			hit.Fields["name"] = tableRecord.Name
-			hit.Fields["comments"] = tableRecord.Comments
-		}
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"data":    []string{},
 				"message": err.Error(),
 			})
 			return
+		}
+
+		for hitIdx := range searchResult.Hits {
+			hit := searchResult.Hits[hitIdx]
+			tableRecord := store.TableStore[hit.ID]
+			hit.Fields["datasetName"] = tableRecord.DatasetName
+			hit.Fields["name"] = tableRecord.Name
+			hit.Fields["comments"] = tableRecord.Comments
 		}
 
 		c.JSON(http.StatusOK, gin.H{
