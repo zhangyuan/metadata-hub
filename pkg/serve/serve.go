@@ -16,6 +16,7 @@ import (
 	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
 	"github.com/blevesearch/bleve/v2/analysis/token/ngram"
 	"github.com/blevesearch/bleve/v2/analysis/tokenizer/letter"
+	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -80,7 +81,7 @@ func NewTableDocument(dataset *Dataset, table *Table) *TableDocument {
 	}
 }
 
-func IndexColumns(datasets []Dataset) (bleve.Index, error) {
+func NewIndexMapping() (mapping.IndexMapping, error) {
 	mapping := bleve.NewIndexMapping()
 	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
 		"type": ngram.Name,
@@ -103,7 +104,29 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 
 	mapping.DefaultAnalyzer = "custom"
 
-	index, err := bleve.NewMemOnly(mapping)
+	return mapping, nil
+}
+
+func NewIndex(storePath string) (bleve.Index, error) {
+	mapping, err := NewIndexMapping()
+	if err != nil {
+		return nil, err
+	}
+
+	if storePath == "" {
+		return bleve.NewMemOnly(mapping)
+	} else {
+		return bleve.New(storePath, mapping)
+	}
+}
+
+func IndexColumns(storeDirectory string, datasets []Dataset) (bleve.Index, error) {
+	var storePath string
+	if storeDirectory != "" {
+		storePath = filepath.Join(storeDirectory, "columns")
+	}
+
+	index, err := NewIndex(storePath)
 	if err != nil {
 		return nil, err
 	}
@@ -122,31 +145,14 @@ func IndexColumns(datasets []Dataset) (bleve.Index, error) {
 	return index, nil
 }
 
-func IndexTables(datasets []Dataset) (bleve.Index, error) {
-	mapping := bleve.NewIndexMapping()
-
-	if err := mapping.AddCustomTokenFilter("content_ngram", map[string]interface{}{
-		"type": ngram.Name,
-		"min":  1,
-		"max":  3,
-	}); err != nil {
-		return nil, err
+func IndexTables(storeDirectory string, datasets []Dataset) (bleve.Index, error) {
+	var storePath string
+	if storeDirectory != "" {
+		storePath = filepath.Join(storeDirectory, "tables")
 	}
 
-	if err := mapping.AddCustomAnalyzer("custom", map[string]interface{}{
-		"type":      custom.Name,
-		"tokenizer": letter.Name,
-		"token_filters": []string{
-			lowercase.Name,
-			"content_ngram",
-		},
-	}); err != nil {
-		return nil, err
-	}
+	index, err := NewIndex(storePath)
 
-	mapping.DefaultAnalyzer = "custom"
-
-	index, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		return nil, err
 	}
@@ -271,12 +277,12 @@ func BuildStore(datasets []Dataset) *Store {
 	}
 }
 
-func BuildIndices(datasets []Dataset) (*Indices, error) {
-	columnsIndex, err := IndexColumns(datasets)
+func BuildIndices(storeDirectory string, datasets []Dataset) (*Indices, error) {
+	columnsIndex, err := IndexColumns(storeDirectory, datasets)
 	if err != nil {
 		return nil, err
 	}
-	tablesIndex, err := IndexTables(datasets)
+	tablesIndex, err := IndexTables(storeDirectory, datasets)
 	if err != nil {
 		return nil, err
 	}
@@ -291,12 +297,12 @@ func BuildUIAssetPath(path string) string {
 	return fmt.Sprintf("dist%s", path)
 }
 
-func Invoke(configDirectory string, addr string) error {
+func Invoke(configDirectory string, storeDirectory string, addr string) error {
 	datasets, err := BuildDatasets(configDirectory)
 	if err != nil {
 		return err
 	}
-	indices, err := BuildIndices(datasets)
+	indices, err := BuildIndices(storeDirectory, datasets)
 	if err != nil {
 		return err
 	}
