@@ -22,7 +22,7 @@ var addr string
 func init() {
 	rootCmd.AddCommand(serveCmd)
 
-	serveCmd.Flags().StringVarP(&configDirectory, "config-directory", "d", "", "path to config directory")
+	serveCmd.Flags().StringVarP(&configDirectory, "config-directory", "c", "", "path to config directory")
 	_ = serveCmd.MarkFlagRequired("config-directory")
 
 	serveCmd.Flags().StringVarP(&addr, "listening addr", "l", ":8080", "listening addr")
